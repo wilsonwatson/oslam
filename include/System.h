@@ -37,6 +37,8 @@
 #include "ORBVocabulary.h"
 #include "Viewer.h"
 
+#include <unistd.h>
+
 namespace ORB_SLAM2
 {
 

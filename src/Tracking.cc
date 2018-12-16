@@ -30,8 +30,6 @@
 #include"Map.h"
 #include"Initializer.h"
 
-#include <geometry_msgs/Vector3.h>
-
 #include"Optimizer.h"
 #include"PnPsolver.h"
 

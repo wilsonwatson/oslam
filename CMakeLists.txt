@@ -1,5 +1,11 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.10)
 project(ORB_SLAM2)
+
+option(ENABLE_GUI ON)
+
+IF(${ENABLE_GUI})
+  add_definitions(-DENABLE_GUI)
+ENDIF()
 
 IF(NOT CMAKE_BUILD_TYPE)
   SET(CMAKE_BUILD_TYPE Release)

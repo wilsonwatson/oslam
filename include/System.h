@@ -132,7 +132,7 @@ public:
       return mFunc;
     }
     
-    std::function<void(std::string)>& status_func(){
+    std::function<void(int, std::string)>& status_func(){
       return mSFunc;
     }
     
@@ -190,7 +190,7 @@ private:
     std::mutex mMutexState;
     
     std::function<void(System*, Eigen::Vector3f, Eigen::Quaternionf, double)> mFunc;
-    std::function<void(std::string)> mSFunc;
+    std::function<void(int, std::string)> mSFunc;
 };
 
 }// namespace ORB_SLAM

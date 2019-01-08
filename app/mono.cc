@@ -54,6 +54,7 @@ public:
 
 void printall(ORB_SLAM2::System* sys, Eigen::Vector3f tran, Eigen::Quaternionf rot, [[maybe_unused]] double dt){
   mtransform << std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start_time).count() << " " << tran.x() << " " << tran.y() << " " << tran.z() << " " << rot.w() << " " << rot.x() << " " << rot.y() << " " << rot.z() << "\n";
+  
   /*
   for(auto point : sys->GetTrackedMapPoints()){
     if(point->isBad()) continue;
@@ -63,8 +64,8 @@ void printall(ORB_SLAM2::System* sys, Eigen::Vector3f tran, Eigen::Quaternionf r
   */
 }
 
-void printstatus(std::string s){
-  std::cout << s << std::endl;
+void printstatus(int state, std::string s){
+  std::cout << state << std::endl;
 }
 
 int main(int argc, char **argv)

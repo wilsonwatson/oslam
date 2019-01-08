@@ -63,9 +63,9 @@ void Viewer::Run()
     if(!should_run){
       
     }
-
+#ifdef ENABLE_GUI
     cv::namedWindow("ORB-SLAM2: Current Frame");
-
+#endif
     bool bFollow = true;
     bool bLocalizationMode = false;
 
@@ -73,7 +73,9 @@ void Viewer::Run()
     {
 
         cv::Mat im = mpFrameDrawer->DrawFrame();
+#ifdef ENABLE_GUI
         cv::imshow("ORB-SLAM2: Current Frame",im);
+#endif
         cv::waitKey(mT); //TODO Make an option
 
         if(Stop())

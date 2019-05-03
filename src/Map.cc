@@ -130,4 +130,17 @@ void Map::clear()
     mvpKeyFrameOrigins.clear();
 }
 
+template<class Archive>
+void Map::serialize(Archive &ar, const unsigned int version)
+{
+    // don't save mutex
+    unique_lock<mutex> lock_MapUpdate(mMutexMapUpdate);
+    unique_lock<mutex> lock_Map(mMutexMap);
+    ar & mspMapPoints;
+    ar & mvpKeyFrameOrigins;
+    ar & mspKeyFrames;
+    ar & mvpReferenceMapPoints;
+    ar & mnMaxKFid & mnBigChangeIdx;
+}
+
 } //namespace ORB_SLAM

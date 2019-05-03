@@ -24,85 +24,94 @@
 #include "Converter.h"
 #include <thread>
 #include <iomanip>
-#include <unistd.h>
 
-bool has_suffix(const std::string &str, const std::string &suffix) {
-  std::size_t index = str.find(suffix, str.size() - suffix.size());
-  return (index != std::string::npos);
+static bool has_suffix(const std::string &str, const std::string &suffix)
+{
+    std::size_t index = str.find(suffix, str.size() - suffix.size());
+    return (index != std::string::npos);
 }
 
 namespace ORB_SLAM2
 {
 
-System::System(const std::string &strVocFile, 
-               const std::string &strSettingsFile, 
+System::System(const string &strVocFile,
+               const string &strSettingsFile,
                const eSensor sensor,
-               const bool bUseViewer):mSensor(sensor), mpViewer(static_cast<Viewer*>(NULL)), mbReset(false),mbActivateLocalizationMode(false),
-        mbDeactivateLocalizationMode(false)
+               const bool bUseViewer,
+               bool is_save_map_):mSensor(sensor), is_save_map(is_save_map_), mpViewer(static_cast<Viewer*>(NULL)), mbReset(false),
+        mbActivateLocalizationMode(false), mbDeactivateLocalizationMode(false)
 {
-
-    // // Start ROS
-    // int argc;
-    // char** argv;
-    // ros::init([], [], "talker");
-
     // Output welcome message
-    std::cout << std::endl <<
-    "ORB-SLAM2 Copyright (C) 2014-2016 Raul Mur-Artal, University of Zaragoza." << std::endl <<
-    "This program comes with ABSOLUTELY NO WARRANTY;" << std::endl  <<
-    "This is free software, and you are welcome to redistribute it" << std::endl <<
-    "under certain conditions. See LICENSE.txt." << std::endl << std::endl;
+    cout << endl <<
+    "ORB-SLAM2 Copyright (C) 2014-2016 Raul Mur-Artal, University of Zaragoza." << endl <<
+    "This program comes with ABSOLUTELY NO WARRANTY;" << endl  <<
+    "This is free software, and you are welcome to redistribute it" << endl <<
+    "under certain conditions. See LICENSE.txt." << endl << endl;
 
-    std::cout << "Input sensor was set to: ";
+    cout << "Input sensor was set to: ";
 
     if(mSensor==MONOCULAR)
-        std::cout << "Monocular" << std::endl;
+        cout << "Monocular" << endl;
     else if(mSensor==STEREO)
-        std::cout << "Stereo" << std::endl;
+        cout << "Stereo" << endl;
     else if(mSensor==RGBD)
-        std::cout << "RGB-D" << std::endl;
+        cout << "RGB-D" << endl;
 
     //Check settings file
     cv::FileStorage fsSettings(strSettingsFile.c_str(), cv::FileStorage::READ);
     if(!fsSettings.isOpened())
     {
-       std::cerr << "Failed to open settings file at: " << strSettingsFile << std::endl;
+       cerr << "Failed to open settings file at: " << strSettingsFile << endl;
        exit(-1);
     }
 
+    cv::FileNode mapfilen = fsSettings["Map.mapfile"];
+    bool bReuseMap = false;
+    if (!mapfilen.empty())
+    {
+        mapfile = (string)mapfilen;
+    }
 
     //Load ORB Vocabulary
-    std::cout << std::endl << "Loading ORB Vocabulary. This could take a while..." << std::endl;
+    cout << endl << "Loading ORB Vocabulary. This could take a while..." << endl;
 
     mpVocabulary = new ORBVocabulary();
-    
     bool bVocLoad = false; // chose loading method based on file extension
     if (has_suffix(strVocFile, ".txt"))
-	    bVocLoad = mpVocabulary->loadFromTextFile(strVocFile);
-	  else
-	    bVocLoad = mpVocabulary->loadFromBinaryFile(strVocFile);
+        bVocLoad = mpVocabulary->loadFromTextFile(strVocFile);
+    else if(has_suffix(strVocFile, ".bin"))
+        bVocLoad = mpVocabulary->loadFromBinaryFile(strVocFile);
+    else
+        bVocLoad = false;
     if(!bVocLoad)
     {
-        std::cerr << "Wrong path to vocabulary. " << std::endl;
-        std::cerr << "Falied to open at: " << strVocFile << std::endl;
+        cerr << "Wrong path to vocabulary. " << endl;
+        cerr << "Falied to open at: " << strVocFile << endl;
         exit(-1);
     }
-    std::cout << "Vocabulary loaded!" << std::endl << std::endl;
+    cout << "Vocabulary loaded!" << endl << endl;
+
 
     //Create KeyFrame Database
-    mpKeyFrameDatabase = new KeyFrameDatabase(*mpVocabulary);
-
     //Create the Map
-    mpMap = new Map();
+    if (!mapfile.empty() && LoadMap(mapfile)) {
+        bReuseMap = true;
+        mbActivateLocalizationMode = true;
+    }
+    else
+    {
+        mpKeyFrameDatabase = new KeyFrameDatabase(mpVocabulary);
+        mpMap = new Map();
+    }
 
     //Create Drawers. These are used by the Viewer
-    mpFrameDrawer = new FrameDrawer(mpMap);
+    mpFrameDrawer = new FrameDrawer(mpMap, bReuseMap);
     mpMapDrawer = new MapDrawer(mpMap, strSettingsFile);
 
     //Initialize the Tracking thread
     //(it will live in the main thread of execution, the one that called this constructor)
     mpTracker = new Tracking(this, mpVocabulary, mpFrameDrawer, mpMapDrawer,
-                             mpMap, mpKeyFrameDatabase, strSettingsFile, mSensor);
+                             mpMap, mpKeyFrameDatabase, strSettingsFile, mSensor, bReuseMap);
 
     //Initialize the Local Mapping thread and launch
     mpLocalMapper = new LocalMapping(mpMap, mSensor==MONOCULAR);
@@ -115,7 +124,7 @@ System::System(const std::string &strVocFile,
     //Initialize the Viewer thread and launch
     if(bUseViewer)
     {
-        mpViewer = new Viewer(this, mpFrameDrawer,mpMapDrawer,mpTracker,strSettingsFile);
+        mpViewer = new Viewer(this, mpFrameDrawer,mpMapDrawer,mpTracker,strSettingsFile, bReuseMap);
         mptViewer = new thread(&Viewer::Run, mpViewer);
         mpTracker->SetViewer(mpViewer);
     }
@@ -137,7 +146,7 @@ cv::Mat System::TrackStereo(const cv::Mat &imLeft, const cv::Mat &imRight, const
     {
         cerr << "ERROR: you called TrackStereo but input sensor was not set to STEREO." << endl;
         exit(-1);
-    }   
+    }
 
     // Check mode change
     {
@@ -149,7 +158,7 @@ cv::Mat System::TrackStereo(const cv::Mat &imLeft, const cv::Mat &imRight, const
             // Wait until Local Mapping has effectively stopped
             while(!mpLocalMapper->isStopped())
             {
-                usleep(1000);
+                std::this_thread::sleep_for(std::chrono::microseconds(1000));
             }
 
             mpTracker->InformOnlyTracking(true);
@@ -179,7 +188,6 @@ cv::Mat System::TrackStereo(const cv::Mat &imLeft, const cv::Mat &imRight, const
     mTrackingState = mpTracker->mState;
     mTrackedMapPoints = mpTracker->mCurrentFrame.mvpMapPoints;
     mTrackedKeyPointsUn = mpTracker->mCurrentFrame.mvKeysUn;
-
     return Tcw;
 }
 
@@ -189,7 +197,7 @@ cv::Mat System::TrackRGBD(const cv::Mat &im, const cv::Mat &depthmap, const doub
     {
         cerr << "ERROR: you called TrackRGBD but input sensor was not set to RGBD." << endl;
         exit(-1);
-    }    
+    }
 
     // Check mode change
     {
@@ -201,7 +209,7 @@ cv::Mat System::TrackRGBD(const cv::Mat &im, const cv::Mat &depthmap, const doub
             // Wait until Local Mapping has effectively stopped
             while(!mpLocalMapper->isStopped())
             {
-                usleep(1000);
+                std::this_thread::sleep_for(std::chrono::microseconds(1000));
             }
 
             mpTracker->InformOnlyTracking(true);
@@ -231,9 +239,6 @@ cv::Mat System::TrackRGBD(const cv::Mat &im, const cv::Mat &depthmap, const doub
     mTrackingState = mpTracker->mState;
     mTrackedMapPoints = mpTracker->mCurrentFrame.mvpMapPoints;
     mTrackedKeyPointsUn = mpTracker->mCurrentFrame.mvKeysUn;
-
-    // std::cout << "rgbd" << std::endl;
-
     return Tcw;
 }
 
@@ -255,7 +260,7 @@ cv::Mat System::TrackMonocular(const cv::Mat &im, const double &timestamp)
             // Wait until Local Mapping has effectively stopped
             while(!mpLocalMapper->isStopped())
             {
-                usleep(1000);
+                std::this_thread::sleep_for(std::chrono::microseconds(1000));
             }
 
             mpTracker->InformOnlyTracking(true);
@@ -278,7 +283,6 @@ cv::Mat System::TrackMonocular(const cv::Mat &im, const double &timestamp)
         mbReset = false;
     }
     }
-
     cv::Mat Tcw = mpTracker->GrabImageMonocular(im,timestamp);
 
     unique_lock<mutex> lock2(mMutexState);
@@ -322,20 +326,31 @@ void System::Reset()
 
 void System::Shutdown()
 {
+    std::cout << "Shutdown Requested!" << std::endl;
     mpLocalMapper->RequestFinish();
     mpLoopCloser->RequestFinish();
     if(mpViewer)
     {
         mpViewer->RequestFinish();
         while(!mpViewer->isFinished())
-            usleep(5000);
+        {
+            std::this_thread::sleep_for(std::chrono::microseconds(5000));
+        }
     }
 
     // Wait until all thread have effectively stopped
+    std::cout << "Wait for threads!" << std::endl;
     while(!mpLocalMapper->isFinished() || !mpLoopCloser->isFinished() || mpLoopCloser->isRunningGBA())
     {
-        usleep(5000);
+        std::this_thread::sleep_for(std::chrono::microseconds(5000));
     }
+
+    if (is_save_map){
+        SaveMap(mapfile);
+    }
+
+    std::cout << "Closing viewer!" << std::endl;
+
 }
 
 void System::SaveTrajectoryTUM(const string &filename)
@@ -506,6 +521,14 @@ vector<cv::KeyPoint> System::GetTrackedKeyPointsUn()
 {
     unique_lock<mutex> lock(mMutexState);
     return mTrackedKeyPointsUn;
+}
+
+void System::SaveMap(const string &)
+{}
+
+bool System::LoadMap(const string &filename)
+{
+  return false;
 }
 
 } //namespace ORB_SLAM

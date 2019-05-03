@@ -31,7 +31,6 @@
 
 #include <mutex>
 
-
 namespace ORB_SLAM2
 {
 
@@ -43,6 +42,7 @@ class KeyFrameDatabase;
 class KeyFrame
 {
 public:
+
     KeyFrame(Frame &F, Map* pMap, KeyFrameDatabase* pKFDB);
 
     // Pose functions
@@ -116,6 +116,14 @@ public:
         return pKF1->mnId<pKF2->mnId;
     }
 
+public:
+    // for serialization
+    KeyFrame(); // Default constructor for serialization, need to deal with const member
+    void SetORBvocabulary(ORBVocabulary *porbv) {mpORBvocabulary=porbv;}
+private:
+    // serialize is recommended to be private
+    template<class Archive>
+    void serialize(Archive &ar, const unsigned int version);
 
     // The following variables are accesed from only 1 thread or never change (no mutex needed).
 public:

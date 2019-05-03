@@ -22,26 +22,23 @@
 #ifndef TRACKING_H
 #define TRACKING_H
 
-#include <opencv2/core/core.hpp>
-#include <opencv2/features2d/features2d.hpp>
+#include<opencv2/core/core.hpp>
+#include<opencv2/features2d/features2d.hpp>
 
-#include <Eigen/Eigen>
-
-#include "Viewer.h"
-#include "FrameDrawer.h"
-#include "Map.h"
-#include "LocalMapping.h"
-#include "LoopClosing.h"
-#include "Frame.h"
+#include"Viewer.h"
+#include"FrameDrawer.h"
+#include"Map.h"
+#include"LocalMapping.h"
+#include"LoopClosing.h"
+#include"Frame.h"
 #include "ORBVocabulary.h"
-#include "KeyFrameDatabase.h"
-#include "ORBextractor.h"
+#include"KeyFrameDatabase.h"
+#include"ORBextractor.h"
 #include "Initializer.h"
 #include "MapDrawer.h"
 #include "System.h"
 
 #include <mutex>
-#include <chrono>
 
 namespace ORB_SLAM2
 {
@@ -57,13 +54,14 @@ class Tracking
 {  
 
 public:
+
     Tracking(System* pSys, ORBVocabulary* pVoc, FrameDrawer* pFrameDrawer, MapDrawer* pMapDrawer, Map* pMap,
-             KeyFrameDatabase* pKFDB, const string &strSettingPath, const int sensor);
+             KeyFrameDatabase* pKFDB, const string &strSettingPath, const int sensor, bool bReuseMap=false);
 
     // Preprocess the input and call Track(). Extract features and performs stereo matching.
-    cv::Mat GrabImageStereo(const cv::Mat &imRectLeft,const cv::Mat &imRectRight, const double &timestamp);
-    cv::Mat GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const double &timestamp);
-    cv::Mat GrabImageMonocular(const cv::Mat &im, const double &timestamp);
+    cv::Mat GrabImageStereo(const cv::Mat &imRectLeft,const cv::Mat &imRectRight, const double &header);
+    cv::Mat GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const double &header);
+    cv::Mat GrabImageMonocular(const cv::Mat &im, const double &header);
 
     void SetLocalMapper(LocalMapping* pLocalMapper);
     void SetLoopClosing(LoopClosing* pLoopClosing);
@@ -105,9 +103,6 @@ public:
     std::vector<cv::Point2f> mvbPrevMatched;
     std::vector<cv::Point3f> mvIniP3D;
     Frame mInitialFrame;
-    
-    Eigen::Vector3f last_t;
-    double last_time;
 
     // Lists used to recover the full camera trajectory at the end of the execution.
     // Basically we store the reference keyframe for each frame and its relative transformation
@@ -120,9 +115,6 @@ public:
     bool mbOnlyTracking;
 
     void Reset();
-    
-    // System
-    System* mpSystem;
 
 protected:
 
@@ -179,6 +171,9 @@ protected:
     std::vector<KeyFrame*> mvpLocalKeyFrames;
     std::vector<MapPoint*> mvpLocalMapPoints;
     
+    // System
+    System* mpSystem;
+    
     //Drawers
     Viewer* mpViewer;
     FrameDrawer* mpFrameDrawer;
@@ -220,9 +215,6 @@ protected:
     bool mbRGB;
 
     list<MapPoint*> mlpTemporalPoints;
-    
-    
-    std::string frame_id_ = "camera";
 };
 
 } //namespace ORB_SLAM

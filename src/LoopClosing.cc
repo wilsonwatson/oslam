@@ -30,7 +30,6 @@
 
 #include<mutex>
 #include<thread>
-#include <unistd.h>
 
 
 namespace ORB_SLAM2
@@ -75,14 +74,14 @@ void LoopClosing::Run()
                    CorrectLoop();
                }
             }
-        }       
+        }
 
         ResetIfRequested();
 
         if(CheckFinish())
             break;
 
-        usleep(5000);
+        std::this_thread::sleep_for(std::chrono::microseconds(5000));
     }
 
     SetFinish();
@@ -426,7 +425,7 @@ void LoopClosing::CorrectLoop()
     // Wait until Local Mapping has effectively stopped
     while(!mpLocalMapper->isStopped())
     {
-        usleep(1000);
+        std::this_thread::sleep_for(std::chrono::microseconds(1000));
     }
 
     // Ensure current keyframe is updated
@@ -440,15 +439,6 @@ void LoopClosing::CorrectLoop()
     CorrectedSim3[mpCurrentKF]=mg2oScw;
     cv::Mat Twc = mpCurrentKF->GetPoseInverse();
 
-    // cv::Size size = Twc.size();
-
-    // for(int i = 0; i < size.height; i++) {
-    //     for(int j = 0; j < size.width; j++) {
-    //         std::cout << Twc.at<double>(i,j) << "\t";
-    //     }
-    //     std::cout << std::endl;
-    // }
-    // std::cout << std::endl;
 
     {
         // Get Map Mutex
@@ -637,7 +627,7 @@ void LoopClosing::RequestReset()
         if(!mbResetRequested)
             break;
         }
-        usleep(5000);
+        std::this_thread::sleep_for(std::chrono::microseconds(5000));
     }
 }
 
@@ -677,7 +667,7 @@ void LoopClosing::RunGlobalBundleAdjustment(unsigned long nLoopKF)
 
             while(!mpLocalMapper->isStopped() && !mpLocalMapper->isFinished())
             {
-                usleep(1000);
+                std::this_thread::sleep_for(std::chrono::microseconds(1000));
             }
 
             // Get Map Mutex

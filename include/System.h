@@ -22,10 +22,9 @@
 #ifndef SYSTEM_H
 #define SYSTEM_H
 
-#include <string>
-#include <thread>
-#include <opencv2/core/core.hpp>
-#include <functional>
+#include<string>
+#include<thread>
+#include<opencv2/core/core.hpp>
 
 #include "Tracking.h"
 #include "FrameDrawer.h"
@@ -37,7 +36,8 @@
 #include "ORBVocabulary.h"
 #include "Viewer.h"
 
-#include <unistd.h>
+// for map file io
+#include <fstream>
 
 namespace ORB_SLAM2
 {
@@ -62,10 +62,11 @@ public:
 public:
 
     // Initialize the SLAM system. It launches the Local Mapping, Loop Closing and Viewer threads.
-    System(const std::string &strVocFile, 
-           const std::string &strSettingsFile, 
+    System(const string &strVocFile,
+           const string &strSettingsFile,
            const eSensor sensor,
-           const bool bUseViewer = true);
+           const bool bUseViewer = true,
+           bool is_save_map_=true);
 
     // Proccess the given stereo frame. Images must be synchronized and rectified.
     // Input images: RGB (CV_8UC3) or grayscale (CV_8U). RGB is converted to grayscale.
@@ -117,25 +118,17 @@ public:
     // Call first Shutdown()
     // See format details at: http://www.cvlibs.net/datasets/kitti/eval_odometry.php
     void SaveTrajectoryKITTI(const string &filename);
-
-    // TODO: Save/Load functions
-    // SaveMap(const string &filename);
-    // LoadMap(const string &filename);
-
     // Information from most recent processed frame
     // You can call this right after TrackMonocular (or stereo or RGBD)
     int GetTrackingState();
     std::vector<MapPoint*> GetTrackedMapPoints();
     std::vector<cv::KeyPoint> GetTrackedKeyPointsUn();
 
-    std::function<void(System*, Eigen::Vector3f, Eigen::Quaternionf, double)>& func(){
-      return mFunc;
-    }
-    
-    std::function<void(int, std::string)>& status_func(){
-      return mSFunc;
-    }
-    
+private:
+    // Save/Load functions
+    void SaveMap(const string &filename);
+    bool LoadMap(const string &filename);
+
 private:
 
     // Input sensor
@@ -149,6 +142,9 @@ private:
 
     // Map structure that stores the pointers to all KeyFrames and MapPoints.
     Map* mpMap;
+
+    string mapfile;
+    bool is_save_map;
 
     // Tracker. It receives a frame and computes the associated camera pose.
     // It also decides when to insert a new keyframe, create some new MapPoints and
@@ -188,9 +184,6 @@ private:
     std::vector<MapPoint*> mTrackedMapPoints;
     std::vector<cv::KeyPoint> mTrackedKeyPointsUn;
     std::mutex mMutexState;
-    
-    std::function<void(System*, Eigen::Vector3f, Eigen::Quaternionf, double)> mFunc;
-    std::function<void(int, std::string)> mSFunc;
 };
 
 }// namespace ORB_SLAM

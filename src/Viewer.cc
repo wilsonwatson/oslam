@@ -21,14 +21,13 @@
 #include "Viewer.h"
 
 #include <mutex>
-#include <unistd.h>
 
 namespace ORB_SLAM2
 {
 
-Viewer::Viewer(System* pSystem, FrameDrawer *pFrameDrawer, MapDrawer *pMapDrawer, Tracking *pTracking, const string &strSettingPath):
+Viewer::Viewer(System* pSystem, FrameDrawer *pFrameDrawer, MapDrawer *pMapDrawer, Tracking *pTracking, const string &strSettingPath, bool mbReuseMap_):
     mpSystem(pSystem), mpFrameDrawer(pFrameDrawer),mpMapDrawer(pMapDrawer), mpTracker(pTracking),
-    mbFinishRequested(false), mbFinished(true), mbStopped(true), mbStopRequested(false)
+    mbFinishRequested(false), mbFinished(true), mbStopped(true), mbStopRequested(false), mbReuseMap(mbReuseMap_)
 {
     cv::FileStorage fSettings(strSettingPath, cv::FileStorage::READ);
 
@@ -49,40 +48,27 @@ Viewer::Viewer(System* pSystem, FrameDrawer *pFrameDrawer, MapDrawer *pMapDrawer
     mViewpointY = fSettings["Viewer.ViewpointY"];
     mViewpointZ = fSettings["Viewer.ViewpointZ"];
     mViewpointF = fSettings["Viewer.ViewpointF"];
-    
-    should_run = (1 - (int)(fSettings["Viewer.Print"]));
-    
-    pMapDrawer->show_map = should_run;
 }
 
 void Viewer::Run()
 {
     mbFinished = false;
     mbStopped = false;
-    
-    if(!should_run){
-      
-    }
-#ifdef ENABLE_GUI
+
     cv::namedWindow("ORB-SLAM2: Current Frame");
-#endif
-    bool bFollow = true;
-    bool bLocalizationMode = false;
 
     while(1)
     {
 
         cv::Mat im = mpFrameDrawer->DrawFrame();
-#ifdef ENABLE_GUI
         cv::imshow("ORB-SLAM2: Current Frame",im);
-#endif
-        cv::waitKey(mT); //TODO Make an option
+        cv::waitKey(mT);
 
         if(Stop())
         {
             while(isStopped())
             {
-                usleep(3000);
+                std::this_thread::sleep_for(std::chrono::microseconds(3000));
             }
         }
 

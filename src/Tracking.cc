@@ -43,7 +43,9 @@ using namespace std;
 namespace ORB_SLAM2
 {
 
-Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer, MapDrawer *pMapDrawer, Map *pMap, KeyFrameDatabase* pKFDB, const string &strSettingPath, const int sensor):
+Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
+                MapDrawer *pMapDrawer, Map *pMap, KeyFrameDatabase* pKFDB,
+                const string &strSettingPath, const int sensor, bool bReuseMap):
     mState(NO_IMAGES_YET), mSensor(sensor), mbOnlyTracking(false), mbVO(false), mpORBVocabulary(pVoc),
     mpKeyFrameDB(pKFDB), mpInitializer(static_cast<Initializer*>(NULL)), mpSystem(pSys), mpViewer(NULL),
     mpFrameDrawer(pFrameDrawer), mpMapDrawer(pMapDrawer), mpMap(pMap), mnLastRelocFrameId(0)
@@ -145,7 +147,8 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
         else
             mDepthMapFactor = 1.0f/mDepthMapFactor;
     }
-
+    if (bReuseMap)
+        mState = LOST;
 }
 
 void Tracking::SetLocalMapper(LocalMapping *pLocalMapper)
@@ -453,40 +456,6 @@ void Tracking::Track()
             }
             mlpTemporalPoints.clear();
 
-            // Publish current pose to ROS
-            cv::Mat TransfMat = mCurrentFrame.mTcw;
-            Eigen::Vector3f t(TransfMat.at<float>(0,3), TransfMat.at<float>(1,3), TransfMat.at<float>(2,3));
-            auto dt = 1.0 / (mCurrentFrame.mTimeStamp - last_time);
-            Eigen::Matrix3f R;
-            R << TransfMat.at<float>(0,0), TransfMat.at<float>(0,1), TransfMat.at<float>(0,2),
-                 TransfMat.at<float>(1,0), TransfMat.at<float>(1,1), TransfMat.at<float>(1,2),
-                 TransfMat.at<float>(2,0), TransfMat.at<float>(2,1), TransfMat.at<float>(2,2);
-            Eigen::Quaternionf q(R);
-
-            // Set rotation in camera frame (z pointing outwards, x pointing to the right, y completes the triad)
-            Eigen::Quaternionf q_cam_rot1(cos(M_PI/4.0), 0.0, sin(M_PI/4.0), 0.0);
-            Eigen::Quaternionf q_cam_rot2(cos(M_PI/4.0), 0.0, 0.0, -sin(M_PI/4.0));    
-            Eigen::Quaternionf q_ = q_cam_rot1*q_cam_rot2*q.inverse();
-
-            Eigen::Quaternionf q_world(q_.w(), q_.z(), -q_.x(), -q_.y());
-            Eigen::Quaternionf q_world_rot1(cos(M_PI/4.0), 0.0, -sin(M_PI/4.0), 0.0);
-            Eigen::Quaternionf qworld_ = q_world_rot1*q_world;
-                
-            mpSystem->func()(mpSystem, t, qworld_, dt);
-                
-            last_t = t;
-            
-            last_time = mCurrentFrame.mTimeStamp;
-                
-                // pose_list_.PoseList.push_back(pose);
-                // if (pose_list_.PoseList.size() > window_size_) {
-                //     pose_list_.PoseList.pop_back();
-                // }
-
-                // TODO Output Here
-                // pose_list_pub_.publish(pose_list_);
-            
-
             // Check if we need to insert a new keyframe
             if(NeedNewKeyFrame())
                 CreateNewKeyFrame();
@@ -500,6 +469,8 @@ void Tracking::Track()
                 if(mCurrentFrame.mvpMapPoints[i] && mCurrentFrame.mvbOutlier[i])
                     mCurrentFrame.mvpMapPoints[i]=static_cast<MapPoint*>(NULL);
             }
+
+            // TODO add functor
         }
 
         // Reset if the camera get lost soon after initialization
@@ -531,7 +502,8 @@ void Tracking::Track()
     else
     {
         // This can happen if tracking is lost
-        mlRelativeFramePoses.push_back(mlRelativeFramePoses.back());
+        if (!mlRelativeFramePoses.empty())
+            mlRelativeFramePoses.push_back(mlRelativeFramePoses.back());
         mlpReferences.push_back(mlpReferences.back());
         mlFrameTimes.push_back(mlFrameTimes.back());
         mlbLost.push_back(mState==LOST);
@@ -1525,6 +1497,7 @@ bool Tracking::Relocalization()
 
     if(!bMatch)
     {
+        mCurrentFrame.mTcw = cv::Mat::zeros(0, 0, CV_32F); // set mTcw back to empty if relocation is failed
         return false;
     }
     else
@@ -1543,7 +1516,9 @@ void Tracking::Reset()
     {
         mpViewer->RequestStop();
         while(!mpViewer->isStopped())
-            usleep(3000);
+        {
+            std::this_thread::sleep_for(std::chrono::microseconds(3000));
+        }
     }
 
     // Reset Local Mapping

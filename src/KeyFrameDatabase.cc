@@ -30,10 +30,10 @@ using namespace std;
 namespace ORB_SLAM2
 {
 
-KeyFrameDatabase::KeyFrameDatabase (const ORBVocabulary &voc):
-    mpVoc(&voc)
+KeyFrameDatabase::KeyFrameDatabase (ORBVocabulary *voc):
+    mpVoc(voc)
 {
-    mvInvertedFile.resize(voc.size());
+    mvInvertedFile.resize(voc->size());
 }
 
 
@@ -306,6 +306,12 @@ vector<KeyFrame*> KeyFrameDatabase::DetectRelocalizationCandidates(Frame *F)
     }
 
     return vpRelocCandidates;
+}
+
+template<class Archive>
+void KeyFrameDatabase::serialize(Archive &ar, const unsigned int version)
+{
+    
 }
 
 } //namespace ORB_SLAM

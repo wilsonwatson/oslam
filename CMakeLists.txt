@@ -77,11 +77,25 @@ target_link_libraries(bin_vocabulary ${PROJECT_NAME})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/)
 
 # Node for monocular camera
-add_executable(ORB_SLAM2_noros_exe
+add_executable(oslam_mono
 app/mono.cc
 )
 
-target_link_libraries(ORB_SLAM2_noros_exe
+target_link_libraries(oslam_mono
+${OpenCV_LIBS} 
+${EIGEN3_LIBS}
+${PROJECT_SOURCE_DIR}/Thirdparty/DBoW2/lib/libDBoW2.so
+${PROJECT_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o.so
+${PROJECT_NAME}
+-lboost_system
+)
+
+# Node for stereo camera
+add_executable(oslam_stereo
+app/mono.cc
+)
+
+target_link_libraries(oslam_stereo
 ${OpenCV_LIBS} 
 ${EIGEN3_LIBS}
 ${PROJECT_SOURCE_DIR}/Thirdparty/DBoW2/lib/libDBoW2.so

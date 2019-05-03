@@ -40,7 +40,7 @@ class Viewer;
 class FrameDrawer
 {
 public:
-    FrameDrawer(Map* pMap);
+    FrameDrawer(Map* pMap, bool bReuseMap=false);
 
     // Update info from the last processed frame.
     void Update(Tracking *pTracker);
@@ -62,8 +62,6 @@ protected:
     vector<cv::KeyPoint> mvIniKeys;
     vector<int> mvIniMatches;
     int mState;
-    
-    
 
     Map* mpMap;
 

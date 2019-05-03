@@ -82,6 +82,14 @@ public:
     int PredictScale(const float &currentDist, Frame* pF);
 
 public:
+    // for serialization
+    MapPoint();
+private:
+    // serialize is recommended to be private
+    template<class Archive>
+    void serialize(Archive &ar, const unsigned int version);
+
+public:
     long unsigned int mnId;
     static long unsigned int nNextId;
     long int mnFirstKFid;

@@ -28,7 +28,6 @@
 #include <mutex>
 
 
-
 namespace ORB_SLAM2
 {
 
@@ -65,6 +64,12 @@ public:
 
     // This avoid that two points are created simultaneously in separate threads (id conflict)
     std::mutex mMutexPointCreation;
+
+
+private:
+    // serialize is recommended to be private
+    template<class Archive>
+    void serialize(Archive &ar, const unsigned int version);
 
 protected:
     std::set<MapPoint*> mspMapPoints;

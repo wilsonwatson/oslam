@@ -273,6 +273,9 @@ void Tracking::Track()
     {
         mState = NOT_INITIALIZED;
     }
+    
+    if(mpSystem->UpdateState)
+      mpSystem->UpdateState(mpSystem, mState);
 
     mLastProcessedState=mState;
 
@@ -470,7 +473,29 @@ void Tracking::Track()
                     mCurrentFrame.mvpMapPoints[i]=static_cast<MapPoint*>(NULL);
             }
 
-            // TODO add functor
+            if(mpSystem->UpdatePosition){
+              cv::Mat TransfMat = mCurrentFrame.mTcw;
+              Eigen::Vector3f t(TransfMat.at<float>(0,3), TransfMat.at<float>(1,3), TransfMat.at<float>(2,3));
+              auto dt = 1.0 / (mCurrentFrame.mTimeStamp - last_time);
+              Eigen::Matrix3f R;
+              R << TransfMat.at<float>(0,0), TransfMat.at<float>(0,1), TransfMat.at<float>(0,2),
+                   TransfMat.at<float>(1,0), TransfMat.at<float>(1,1), TransfMat.at<float>(1,2),
+                   TransfMat.at<float>(2,0), TransfMat.at<float>(2,1), TransfMat.at<float>(2,2);
+              Eigen::Quaternionf q(R);
+
+              // Set rotation in camera frame (z pointing outwards, x pointing to the right, y completes the triad)
+              Eigen::Quaternionf q_cam_rot1(cos(M_PI/4.0), 0.0, sin(M_PI/4.0), 0.0);
+              Eigen::Quaternionf q_cam_rot2(cos(M_PI/4.0), 0.0, 0.0, -sin(M_PI/4.0));
+              Eigen::Quaternionf q_ = q_cam_rot1*q_cam_rot2*q.inverse();
+
+              Eigen::Quaternionf q_world(q_.w(), q_.z(), -q_.x(), -q_.y());
+              Eigen::Quaternionf q_world_rot1(cos(M_PI/4.0), 0.0, -sin(M_PI/4.0), 0.0);
+              Eigen::Quaternionf qworld_ = q_world_rot1*q_world;
+
+              mpSystem->UpdatePosition(mpSystem, t, qworld_, dt);
+            }
+
+            last_time = mCurrentFrame.mTimeStamp;
         }
 
         // Reset if the camera get lost soon after initialization

@@ -26,6 +26,7 @@
 #include<thread>
 #include<opencv2/core/core.hpp>
 
+#include <Eigen/Eigen>
 #include "Tracking.h"
 #include "FrameDrawer.h"
 #include "MapDrawer.h"
@@ -123,6 +124,10 @@ public:
     int GetTrackingState();
     std::vector<MapPoint*> GetTrackedMapPoints();
     std::vector<cv::KeyPoint> GetTrackedKeyPointsUn();
+    
+    void (*UpdatePosition)(ORB_SLAM2::System *, Eigen::Vector3f,
+                           Eigen::Quaternionf, double) = nullptr;
+    void (*UpdateState)(ORB_SLAM2::System *, int) = nullptr;
 
 private:
     // Save/Load functions

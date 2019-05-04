@@ -86,7 +86,7 @@ ${PROJECT_NAME}
 
 # Node for stereo camera
 add_executable(oslam_stereo
-app/mono.cc
+app/stereo.cc
 )
 
 target_link_libraries(oslam_stereo
